@@ -57,7 +57,7 @@ def join_data(daily, weight, activity):
     frame["weight_7d_mean"] = frame["weight_kg"].rolling(7, min_periods=3).mean()
     frame["logged"] = frame["logged"].fillna(False).astype(bool)
     frame["plausibly_complete"] = frame["plausibly_complete"].fillna(False).astype(bool)
-    # Only compare intake and expenditure on potentially complete logging days.
+    # Always supply optional energy columns for absent Withings exports.\n    for optional in ("tdee_calories", "active_burned_calories", "steps"):\n        if optional not in frame:\n            frame[optional] = np.nan\n    # Only compare intake and expenditure on potentially complete logging days.
     frame["observed_deficit_kcal"] = np.where(
         frame["plausibly_complete"], frame.get("tdee_calories", np.nan) - frame["calories"], np.nan)
     return frame

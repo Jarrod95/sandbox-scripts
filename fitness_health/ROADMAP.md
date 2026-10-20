@@ -1,6 +1,6 @@
 # Fitness & Health — Development Roadmap
 
-> **Status:** proposed, not implemented. **Last updated:** 2026-10-20.  
+> **Status:** v0.1 implementation in PR review. **Last updated:** 2026-10-21.  
 > **Scope boundary:** All fitness and personal-health scripts, data, reports, notebooks, tests and dashboards live under `fitness_health/`. The repository root remains a generic sandbox for unrelated scripts. Never move fitness datasets back to root.
 
 ## Purpose and operating principles
@@ -25,20 +25,29 @@ Build a reproducible, privacy-conscious, evidence-based fitness analytics platfo
 - `fitness_health/fitness_analysis.py`: shared food/weight cleaning, optional wearable joins, TDEE sensitivity scenarios and DEXA-based goal calculations.
 - Root: generic README, dependency manifest, `.gitignore` and an untracked local `.env` (with `CLIENT_ID` and `CLIENT_SECRET`). No fitness data belongs at root.
 
+## Version history
+
+| Version | Date | Change | Verification |
+| --- | --- | --- | --- |
+| v0.1.0 | 2026-10-21 | Local loopback browser dashboard (no Streamlit), source-aware weight/food/Withings charts, TDEE scenario inputs, monthly coverage tables, validation audit, weekly Markdown report, synthetic regression tests, CI workflow, local runbook. | Source checks and automated CI configured; local Windows and real-data execution require reviewer verification. |
+| v0.0.0 | 2026-10-20 | Initial proposed architecture, analytics definitions and FH-01 to FH-17 backlog. | Planning only. |
+
+**Known issues / limits in v0.1:** Dashboard loads historical CSVs on demand (not auto-sync); dates filter observations; forecasts are illustrative and not uncertainty-calibrated. Food completeness uses a crude <1,400 kcal heuristic. Equal weight values remain flagged as possible carry-forwards. The local server is loopback-only; it has no user authentication and must not be reverse-proxied publicly. The CLI weekly report is on-demand, not scheduled. Historic committed health exports remain public, and must be addressed as an explicit security task.
+
 ## Prioritized backlog
 
 | ID | Priority | Workstream | Deliverable | Acceptance criteria |
 | --- | --- | --- | --- | --- |
 | FH-01 | P0 | Security | Review repo visibility and history of committed health exports | Sensitive data no longer publicly exposed; secret scanning and history remediation assessed |
 | FH-02 | P0 | Paths | Verify every moved notebook, JS exporter and README | Run from root and subfolders; no references to old root-level fitness paths |
-| FH-03 | P0 | Quality | Schema, date, unit and completeness validation | Tests cover missing diary days, duplicates, carry-forward weights, partial days and malformed API payloads |
-| FH-04 | P0 | CI | GitHub Actions: lint, tests, notebook parse/smoke checks | PR checks pass without credentials or private health data |
+| FH-03 | P0 | Quality | **Partial:** frame audit and synthetic checks implemented | Next: validate exporter schemas, duplicate provenance, partial days and malformed API payloads |
+| FH-04 | P0 | CI | **Partial:** credential-free unit tests, Python compile and notebook JSON validation in GitHub Actions | Next: lint, execution smoke checks and branch protection |
 | FH-05 | P1 | Withings | Incremental API ingestion, refresh handling and audit log | Idempotent exports; missing scopes/devices reported; retries/rate limits handled |
 | FH-06 | P1 | MyFitnessPal | More robust repeatable exports and import manifest | Files land only under `fitness_health/myfitnesspal/data`; stable filenames and de-duplication |
 | FH-07 | P1 | TDEE | Wearable vs weight/intake-derived rolling estimate | Uncertainty bands, incomplete-day exclusions and out-of-sample accuracy tracking |
 | FH-08 | P1 | Training | Strength training schema and importer | Exercise, sets, reps, load, RPE/RIR, volume, estimated 1RM and weekly summaries |
-| FH-09 | P1 | Dashboard | Streamlit app with overview, diet, weight and TDEE | Readable high-contrast graphs; filters; provenance shown; no data leaves private storage |
-| FH-10 | P1 | Reports | Weekly automated summary | Trends, completeness, model error, next checkpoints and actionable questions |
+| FH-09 | P1 | Dashboard | **v0.1 implemented:** local stdlib HTTP app (instead of Streamlit), weight, food, TDEE, scenarios, filters, provenance | Next: accessibility, richer interactive exploration and performance |
+| FH-10 | P1 | Reports | **Partial:** on-demand Markdown weekly report with provenance and completeness | Next: schedule locally, track model errors, compare prior weeks |
 | FH-11 | P2 | Composition | DEXA and BIA longitudinal module | Separate method series, FFMI, fat/lean mass, confidence and measurement conditions |
 | FH-12 | P2 | Nutrition | Macro, fibre and micronutrient adequacy | Completeness-aware trends; no invented intake for unlogged days |
 | FH-13 | P2 | Recovery | Sleep, resting HR, activity and subjective fatigue | Source/device availability flags and longitudinal comparisons |
@@ -58,7 +67,7 @@ sandbox-scripts/
 ├── fitness_health/
 │   ├── README.md
 │   ├── ROADMAP.md                     # this document
-│   ├── fitness_analysis.py           # existing shared calculations; refactor later
+│   ├── fitness_analysis.py           # canonical shared calculations\n│   ├── local_app.py                  # localhost dashboard; no Streamlit\n│   ├── quality.py                    # data quality audit\n│   ├── weekly_report.py              # on-demand Markdown weekly report
 │   ├── myfitnesspal/
 │   │   ├── data/                      # ALL MFP exports
 │   │   ├── mfp-fooddiary.js
@@ -75,7 +84,7 @@ sandbox-scripts/
 │   │   └── reporting/
 │   ├── dashboards/
 │   ├── notebooks/
-│   ├── tests/
+│   ├── tests/                        # synthetic unit tests
 │   ├── reports/
 │   └── data/                          # future OTHER fitness data only
 └── other_script_projects/            # unrelated work
@@ -88,8 +97,8 @@ The layout under `src/` is aspirational. Don't create empty directories or migra
 ### Sprint 1 — reliable foundation
 - [ ] FH-01: private data and secrets review
 - [ ] FH-02: test relocated notebooks and browser exporters
-- [ ] FH-03: data quality tests
-- [ ] FH-04: CI checks
+- [x] FH-03: initial data quality audit and synthetic regression tests (more edge cases pending)
+- [x] FH-04: initial CI checks (lint and executed notebook checks pending)
 
 **Definition of done:** reproducible imports, no broken paths, documented coverage, no credentials in commits, passing automated tests.
 
@@ -102,8 +111,8 @@ The layout under `src/` is aspirational. Don't create empty directories or migra
 
 ### Sprint 3 — training and reporting
 - [ ] FH-08: training logs
-- [ ] FH-09: Streamlit dashboard
-- [ ] FH-10: weekly summary
+- [x] FH-09: local browser dashboard v0.1 (no Streamlit)
+- [x] FH-10: on-demand weekly Markdown summary (scheduled automation pending)
 
 **Definition of done:** weight, food, activity and lifting data appear together, with labelled source coverage and accessible plots.
 
@@ -113,6 +122,28 @@ The layout under `src/` is aspirational. Don't create empty directories or migra
 - [ ] Assess the feasibility and health implications of the 95 kg at 10% and 8% aspirations
 
 **Definition of done:** longitudinal composition metrics distinguish methods; forecasts show scenarios rather than guaranteed dates; health markers are reviewed appropriately.
+
+## Next implementation goals (ordered)
+
+1. **P0 security, FH-01:** change repository visibility or move private exports to secure storage, remove tracked health data from the current tree and plan history redaction/credential rotation separately. Gitignore only prevents future untracked additions; it does not protect committed history.
+2. **P0 ingestion integrity, FH-02/03:** verify exporter and notebook paths, validate CSV schemas and units; recognize date gaps, incomplete days and actual weigh-in events separately from carried-forward chart values.
+3. **P0 CI, FH-04:** add lint/static checks and execute safe notebook fragments on synthetic fixtures, enforce passing checks before merging.
+4. **P1 ingestion, FH-05/06:** incremental Withings API extraction, OAuth refresh, rate-limit retries, and idempotent MyFitnessPal manifest with source hashes; preserve existing browser exporters.
+5. **P1 model, FH-07:** calibrate rolling TDEE from complete diary windows and observed weigh-in events; distinguish wearable estimates, measured changes and assumptions; add held-out accuracy checks.
+6. **P1 training, FH-08:** create a human-editable lifting CSV schema and weekly volume/estimated-1RM plots.
+7. **P1 reporting, FH-09/10:** local dashboard drilldowns, explicit date coverage indicators, CSV exports and optional Windows Task Scheduler weekly reports.
+8. **P2 composition and forecasts, FH-11/15:** DEXA/BIA method-specific history, real measurement dates and scenario prediction intervals before any ambitious body-composition timeframe claims.
+
+### v0.1 verification checklist
+
+- [x] Existing MyFitnessPal exporter scripts and notebook retained unchanged.
+- [x] Shared analysis reused; missing Withings no longer breaks the joined data API.
+- [x] Browser UI uses localhost only with no remote asset requests.
+- [x] Weekly report refuses paths outside `fitness_health/`.
+- [x] Added synthetic unit tests and Python/notebook syntax CI checks.
+- [ ] CI must finish successfully on the opened PR.
+- [ ] Manually launch in Windows and compare plotted metrics against existing notebook.
+- [ ] Remediate public health data exposure and scan entire Git history.
 
 ## Analytics contracts and definitions
 

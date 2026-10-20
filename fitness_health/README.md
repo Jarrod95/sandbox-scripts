@@ -1,14 +1,28 @@
 # Fitness & Health
 
-Personal fitness analytics: MyFitnessPal intake and weight, Withings activity and health metrics, body composition, forecasts and reporting.
+Locally hosted analysis of MyFitnessPal food and weight exports, optional Withings activity, energy-balance scenarios and reports. Uses the shared [analytics functions](fitness_analysis.py); no Streamlit or cloud deployment.
 
-| Location | Contents |
-| --- | --- |
-| [MyFitnessPal](myfitnesspal/) | Browser exporters, all MFP data, analysis notebook and [journey report](myfitnesspal/WEIGHT_JOURNEY.md) |
-| [Withings](withings/) | API extraction notebook and Withings data directory |
-| [fitness_analysis.py](fitness_analysis.py) | Shared calculations and scenario functions |
-| [ROADMAP.md](ROADMAP.md) | Prioritized, bot-readable development plan |
+## Run locally (Windows PowerShell, from repository root)
 
-Install root dependencies with `pip install -r requirements.txt`, set `CLIENT_ID` and `CLIENT_SECRET` in an **untracked** root `.env`, then open the notebooks. Their imports resolve `fitness_health/fitness_analysis.py` and their inputs stay under this folder.
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m fitness_health.local_app
+```
 
-**Boundary:** no fitness CSV, JSON, XLSX, databases, notebook outputs or generated reports should be written to repository root. Browser exporters require explicit folder selection. Protect private health data before pushing to GitHub.
+Open **http://127.0.0.1:8765**. Stop with `Ctrl+C`. Optional: `python -m fitness_health.local_app --port 8766`.
+
+The dashboard reads CSVs from `fitness_health/myfitnesspal/data/` and optionally `fitness_health/withings/data/withings_daily_activity.csv`. Nothing is uploaded; the server binds to loopback only. A missing MFP export is shown as an error rather than fabricated data.
+
+Generate a local weekly Markdown summary:
+
+```powershell
+python -m fitness_health.weekly_report
+python -m fitness_health.weekly_report --end 2026-10-20 --output fitness_health/reports/week.md
+python -m unittest discover -s fitness_health/tests -v
+```
+
+Exports: [MFP instructions](myfitnesspal/README.md), [Withings instructions](withings/README.md). Existing `weight_journey.ipynb` remains supported. See [ROADMAP](ROADMAP.md) for version history, next priorities and limitations.
+
+**Privacy:** `fitness_health/myfitnesspal/data/`, `fitness_health/withings/data/` and generated reports must not be committed. Previously tracked health exports remain in the public repository and Git history until separately remediated. Review repository history and visibility.
