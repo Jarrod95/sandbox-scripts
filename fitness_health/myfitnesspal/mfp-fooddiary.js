@@ -20,14 +20,14 @@
     }
     return new Promise(resolve => {
       const button = document.createElement("button");
-      button.textContent = "Choose sandbox-scripts/myfitnesspal/data for MFP export";
+      button.textContent = "Choose sandbox-scripts/fitness_health/myfitnesspal/data for MFP export";
       Object.assign(button.style, {
         position:"fixed", top:"16px", right:"16px", zIndex:"2147483647",
         padding:"12px", color:"#fff", background:"#145a92",
         border:"2px solid #fff", borderRadius:"8px", cursor:"pointer"
       });
       document.body.appendChild(button);
-      console.log("Click the blue button and choose your local sandbox-scripts/myfitnesspal/data folder.");
+      console.log("Click the blue button and choose your local sandbox-scripts/fitness_health/myfitnesspal/data folder.");
       button.addEventListener("click", async () => {
         try {
           // Picker call must be directly associated with a user gesture.

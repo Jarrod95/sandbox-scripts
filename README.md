@@ -1,23 +1,11 @@
-# Fitness data sandbox
+# Sandbox Scripts
 
-Reproducible personal fitness-data extraction, analysis and weight-planning notebooks.
+General-purpose repository for experiments and small scripts.
 
-| Folder | Contents |
-| --- | --- |
-| [withings](withings/) | Withings API notebook: OAuth, activity, workouts, sleep, body measures, heart data, exports and plots |
-| [myfitnesspal](myfitnesspal/) | Browser exporters, source CSV/JSON data, weight forecasts and [shareable journey report](myfitnesspal/WEIGHT_JOURNEY.md) |
-| [fitness_analysis.py](fitness_analysis.py) | Shared, conservative data cleaning and energy-balance forecast functions |
+## Projects
 
-## Start
+- [Fitness & Health](fitness_health/README.md) — personal fitness ingestion, analysis notebooks and long-term planning. All fitness datasets stay inside `fitness_health/`.
 
-```bash
-python -m pip install -r requirements.txt
-cp .env.example .env  # populate CLIENT_ID and CLIENT_SECRET locally
-jupyter lab
-```
+The repository root holds only shared configuration and general documentation. Unrelated scripts may be added as separate top-level projects. See [Fitness roadmap](fitness_health/ROADMAP.md) for the detailed, implementation-ready backlog.
 
-Open `withings/withings-mfp-calories.ipynb` or `myfitnesspal/weight_journey.ipynb`. The notebook finds the repository root automatically, so it works from either directory.
-
-Never commit `.env`, access tokens, authorization codes or raw credentials. CSV, JSON and XLSX are intentionally allowed by `.gitignore`; the personal exports already committed here may contain sensitive health data, so assess repository visibility before sharing.
-
-**Interpretation:** Withings expenditure is an estimate, missing MyFitnessPal days are untracked rather than zero-intake, and repeated scale values in the exported weight history may be chart carry-forwards.
+**Privacy:** personal CSV/JSON exports are sensitive. Review repository visibility and commit history before sharing.
