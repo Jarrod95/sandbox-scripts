@@ -6,13 +6,11 @@ No Streamlit, remote assets, cookies or external network calls.
 from __future__ import annotations
 
 import argparse
-import html
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-import numpy as np
 import pandas as pd
 
 from fitness_health.fitness_analysis import (
@@ -32,7 +30,7 @@ def safe_number(value):
 
 def series(frame, cols):
     return [
-        {"date": d.strftime("%Y-%m-%d"), **{c: safe_number(row[c]) if c in row else None for c in cols}}
+        {"date": d.strftime("%Y-%m-%d"), **{c: safe_number(row.get(c)) for c in cols}}
         for d, row in ((item.date, item._asdict()) for item in frame.itertuples(index=False))
     ]
 
