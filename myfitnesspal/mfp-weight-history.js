@@ -25,7 +25,7 @@
         border:"2px solid #fff", borderRadius:"8px", cursor:"pointer"
       });
       document.body.appendChild(button);
-      console.log("Click the blue button on the page, then choose C:\\Users\\jarro\\OneDrive\\Documents\\Codebases\\sandbox-scripts\\myfitnesspal\\data");
+      console.log("Click the blue button and choose your local sandbox-scripts/myfitnesspal/data folder.");
       button.addEventListener("click", async () => {
         try {
           // Picker call must be directly associated with a user gesture.
