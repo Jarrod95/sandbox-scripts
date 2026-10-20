@@ -1,3 +1,45 @@
+# Secrets and local configuration
 .env
-.csv
-.xlsx
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+credentials*.json
+token*.json
+
+# Python and notebooks
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# OS/editor/cache
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.tmp
+*.bak
+*.zip
+*.parquet
+*.pkl
+*.pickle
+*.sqlite
+*.db
+
+# Preserve shareable source data
+!*.csv
+!*.xlsx
+!*.json

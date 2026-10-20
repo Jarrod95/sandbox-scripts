@@ -11,6 +11,79 @@
     prefix: "mfp_2026_apr_oct"
   };
 
+  // Browsers cannot silently write to a Windows path. A real click is required
+  // to grant access to the repository's myfitnesspal/data directory.
+  async function selectOutputDirectory() {
+    if (!window.showDirectoryPicker) {
+      console.warn("Folder writing unavailable; falling back to Downloads.");
+      return null;
+    }
+    return new Promise(resolve => {
+      const button = document.createElement("button");
+      button.textContent = "Choose sandbox-scripts/myfitnesspal/data for MFP export";
+      Object.assign(button.style, {
+        position:"fixed", top:"16px", right:"16px", zIndex:"2147483647",
+        padding:"12px", color:"#fff", background:"#145a92",
+        border:"2px solid #fff", borderRadius:"8px", cursor:"pointer"
+      });
+      document.body.appendChild(button);
+      console.log("Click the blue button and choose your local sandbox-scripts/myfitnesspal/data folder.");
+      button.addEventListener("click", async () => {
+        try {
+          // Picker call must be directly associated with a user gesture.
+          const handle = await window.showDirectoryPicker({mode:"readwrite", id:"mfp-data"});
+          if (handle.name !== "data") {
+            const proceed = window.confirm(
+              "Selected folder is '" + handle.name + "', not 'data'. Use it anyway?"
+            );
+            if (!proceed) return;
+          }
+          button.remove();
+          resolve(handle);
+        } catch (error) {
+          if (error.name === "AbortError") {
+            console.warn("Directory selection cancelled. Click again to choose a folder.");
+          } else {
+            console.warn("Folder access failed; using Downloads.", error);
+            button.remove();
+            resolve(null);
+          }
+        }
+      });
+    });
+  }
+
+  function downloadFallback(content, filename, type) {
+    const blob = new Blob([content], {type});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+
+  async function saveExport(folder, content, filename, type) {
+    if (!folder) {
+      downloadFallback(content, filename, type);
+      return;
+    }
+    const handle = await folder.getFileHandle(filename, {create:true});
+    const writable = await handle.createWritable();
+    try {
+      await writable.write(content);
+      await writable.close();
+      console.log("Saved to chosen folder:", filename);
+    } catch (error) {
+      try { await writable.abort(); } catch {}
+      throw error;
+    }
+  }
+
+  const outputFolder = await selectOutputDirectory();
+
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   const number = value => {
@@ -328,20 +401,6 @@
     ].join("\r\n");
   }
 
-  function download(content, filename, type) {
-    const blob = new Blob([content], { type });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  }
-
   const foodFields = [
     "date", "meal", "food", "entry_id",
     ...nutrients
@@ -358,25 +417,29 @@
     "calorie_difference", "validated"
   ];
 
-  download(
+  await saveExport(
+    outputFolder,
     toCSV(foods, foodFields),
     CONFIG.prefix + "_foods.csv",
     "text/csv"
   );
 
-  download(
+  await saveExport(
+    outputFolder,
     toCSV(meals, mealFields),
     CONFIG.prefix + "_meals.csv",
     "text/csv"
   );
 
-  download(
+  await saveExport(
+    outputFolder,
     toCSV(daily, dailyFields),
     CONFIG.prefix + "_daily.csv",
     "text/csv"
   );
 
-  download(
+  await saveExport(
+    outputFolder,
     JSON.stringify({
       config: CONFIG,
       successful_days: successful.length,
