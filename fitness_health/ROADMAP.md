@@ -1,6 +1,6 @@
 # Fitness & Health — Development Roadmap
 
-> **Status:** v0.1 implementation in PR review. **Last updated:** 2026-10-21.  
+> **Status:** v0.2 Gym Day exercise dashboard proposed for PR review. **Last updated:** 2026-10-21.  
 > **Scope boundary:** All fitness and personal-health scripts, data, reports, notebooks, tests and dashboards live under `fitness_health/`. The repository root remains a generic sandbox for unrelated scripts. Never move fitness datasets back to root.
 
 ## Purpose and operating principles
@@ -29,6 +29,7 @@ Build a reproducible, privacy-conscious, evidence-based fitness analytics platfo
 
 | Version | Date | Change | Verification |
 | --- | --- | --- | --- |
+| v0.2.0 | 2026-10-21 | Added Gym Day/Daily Strength ZIP session importer, training tab with exercise dropdown and progress plots, light dashboard theme, synthetic importer tests and local ZIP instructions. Private exports excluded from Git. | Pending Windows smoke test with original ZIP and CI; verify units and local dates. |
 | v0.1.0 | 2026-10-21 | Local loopback browser dashboard (no Streamlit), source-aware weight/food/Withings charts, TDEE scenario inputs, monthly coverage tables, validation audit, weekly Markdown report, synthetic regression tests, CI workflow, local runbook. | Source checks and automated CI configured; local Windows and real-data execution require reviewer verification. |
 | v0.0.0 | 2026-10-20 | Initial proposed architecture, analytics definitions and FH-01 to FH-17 backlog. | Planning only. |
 
@@ -45,8 +46,8 @@ Build a reproducible, privacy-conscious, evidence-based fitness analytics platfo
 | FH-05 | P1 | Withings | Incremental API ingestion, refresh handling and audit log | Idempotent exports; missing scopes/devices reported; retries/rate limits handled |
 | FH-06 | P1 | MyFitnessPal | More robust repeatable exports and import manifest | Files land only under `fitness_health/myfitnesspal/data`; stable filenames and de-duplication |
 | FH-07 | P1 | TDEE | Wearable vs weight/intake-derived rolling estimate | Uncertainty bands, incomplete-day exclusions and out-of-sample accuracy tracking |
-| FH-08 | P1 | Training | Strength training schema and importer | Exercise, sets, reps, load, RPE/RIR, volume, estimated 1RM and weekly summaries |
-| FH-09 | P1 | Dashboard | **v0.1 implemented:** local stdlib HTTP app (instead of Streamlit), weight, food, TDEE, scenarios, filters, provenance | Next: accessibility, richer interactive exploration and performance |
+| FH-08 | P1 | Training | **v0.2 partial:** Gym Day ZIP importer with exercise set metrics and training dashboard | Exercise, sets, reps, load, RPE/RIR, volume, estimated 1RM and weekly summaries |
+| FH-09 | P1 | Dashboard | **v0.2 partial:** light theme, health/training tabs, exercise selection and trend plots; previously local stdlib HTTP app (instead of Streamlit), weight, food, TDEE, scenarios, filters, provenance | Next: accessibility, richer interactive exploration and performance |
 | FH-10 | P1 | Reports | **Partial:** on-demand Markdown weekly report with provenance and completeness | Next: schedule locally, track model errors, compare prior weeks |
 | FH-11 | P2 | Composition | DEXA and BIA longitudinal module | Separate method series, FFMI, fat/lean mass, confidence and measurement conditions |
 | FH-12 | P2 | Nutrition | Macro, fibre and micronutrient adequacy | Completeness-aware trends; no invented intake for unlogged days |
@@ -130,7 +131,7 @@ The layout under `src/` is aspirational. Don't create empty directories or migra
 3. **P0 CI, FH-04:** add lint/static checks and execute safe notebook fragments on synthetic fixtures, enforce passing checks before merging.
 4. **P1 ingestion, FH-05/06:** incremental Withings API extraction, OAuth refresh, rate-limit retries, and idempotent MyFitnessPal manifest with source hashes; preserve existing browser exporters.
 5. **P1 model, FH-07:** calibrate rolling TDEE from complete diary windows and observed weigh-in events; distinguish wearable estimates, measured changes and assumptions; add held-out accuracy checks.
-6. **P1 training, FH-08:** create a human-editable lifting CSV schema and weekly volume/estimated-1RM plots.
+6. **P1 training, FH-08:** validate Gym Day machine load semantics and kg/lb detection with the complete export; add weekly volume, training frequency, rolling strength trends, PR detection and exercise comparison across blocks.
 7. **P1 reporting, FH-09/10:** local dashboard drilldowns, explicit date coverage indicators, CSV exports and optional Windows Task Scheduler weekly reports.
 8. **P2 composition and forecasts, FH-11/15:** DEXA/BIA method-specific history, real measurement dates and scenario prediction intervals before any ambitious body-composition timeframe claims.
 
@@ -164,6 +165,22 @@ The layout under `src/` is aspirational. Don't create empty directories or migra
 Paste this roadmap into a ChatGPT conversation and request:
 
 > Implement **FH-XX** from `fitness_health/ROADMAP.md` in `Jarrod95/sandbox-scripts`. Inspect the current implementation first. Keep all fitness files and data within `fitness_health/`. Reuse existing functions; add automated tests and concise documentation; update the relevant roadmap checklist; open a PR without merging. Report any checks you could not run.
+
+## Gym Day v0.2 acceptance and next goals
+
+- [x] Parse actual Daily Strength export shape: nested sessions, exercises and sets from the ZIP.
+- [x] Add a local-only exercise dashboard with load, estimated 1RM, volume, sets and recent sessions.
+- [x] Change the dashboard to a light theme; preserve no-Streamlit localhost design.
+- [x] Add synthetic import tests and ZIP placement instructions.
+- [ ] Verify all session counts, units, duplicate IDs, and latest exercise records against the full private export in Windows.
+- [ ] Implement weekly/monthly volume, training consistency calendar, personal-record timeline and muscle-group breakdown.
+- [ ] Add exercise comparison and multi-exercise strength trend views with rolling averages.
+- [ ] Support time-range filters inside the training tab and data CSV downloads.
+- [ ] Flag unreliable e1RM for machine exercises, assisted/bodyweight work and extremely high rep ranges.
+- [ ] Add local file-import UI with ZIP validation and optional incremental import (never direct public GitHub storage).
+- [ ] Add planned-vs-completed workouts, deload detection and training/rest consistency.
+- [ ] Consider Withings recovery signals and MFP nutrition correlation with explicit uncertainty.
+- [ ] Smoke-test the application on Windows and run CI before merge.
 
 ## What good looks like
 
