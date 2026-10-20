@@ -43,3 +43,7 @@ Thumbs.db
 !*.csv
 !*.xlsx
 !*.json
+
+# Private Gym Day / Daily Strength exports
+fitness_health/gymday/data/*
+!fitness_health/gymday/data/.gitkeep
