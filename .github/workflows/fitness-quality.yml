@@ -1,0 +1,34 @@
+name: Fitness health quality
+on:
+  pull_request:
+    paths:
+      - 'fitness_health/**'
+      - '.github/workflows/fitness-quality.yml'
+  push:
+    paths:
+      - 'fitness_health/**'
+      - '.github/workflows/fitness-quality.yml'
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install pandas numpy
+      - name: Unit tests
+        run: python -m unittest discover -s fitness_health/tests -v
+      - name: Python source compilation
+        run: python -m compileall -q fitness_health
+      - name: Notebook JSON validation
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for path in Path('fitness_health').rglob('*.ipynb'):
+              doc=json.loads(path.read_text(encoding='utf-8'))
+              assert doc.get('nbformat', 0) >= 4, path
+              assert isinstance(doc.get('cells'), list), path
+              print('OK', path)
+          PY
