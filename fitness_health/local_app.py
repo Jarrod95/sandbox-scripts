@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -17,6 +18,7 @@ from fitness_health.fitness_analysis import (
     load_mfp, load_withings, join_data, monthly_summary, forecast, lean_goal_table,
 )
 from fitness_health.quality import audit_frame
+from fitness_health.gymday_analysis import load_training
 
 HOME = Path(__file__).resolve().parent
 MAX_ROWS = 2000
@@ -95,23 +97,23 @@ HTML = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fitness &amp; Health | Local</title>
 <style>
-:root{color-scheme:dark;background:#101621;color:#eaf0f6;font:15px system-ui,Segoe UI,sans-serif}
+:root{color-scheme:light;background:#f7f9fc;color:#17263a;font:15px system-ui,Segoe UI,sans-serif}
 *{box-sizing:border-box}body{max-width:1250px;margin:auto;padding:32px}
 h1{font-size:32px;margin:0}h2{margin:0 0 14px;font-size:18px}
-.subtitle,.note{color:#a5b5c9}header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.subtitle,.note{color:#526579}header{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .controls{display:flex;gap:12px;flex-wrap:wrap;margin:24px 0}
-label{display:grid;gap:7px;font-size:13px;color:#b2c1d2}
-input,button{padding:10px 12px;background:#192436;border:1px solid #40546b;color:#f2f7ff;border-radius:8px}
-button{cursor:pointer;background:#2670d5;border:none;align-self:end}
+label{display:grid;gap:7px;font-size:13px;color:#46586b}
+input,button{padding:10px 12px;background:#ffffff;border:1px solid #c8d5e2;color:#17263a;border-radius:8px}
+button{cursor:pointer;background:#2369bd;border:none;align-self:end}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
-.card{background:#192334;border:1px solid #2c4058;border-radius:14px;padding:20px;min-width:0}
+.card{background:#ffffff;border:1px solid #dae3ec;border-radius:14px;padding:20px;min-width:0}
 .stat{font-size:28px;font-weight:700}section{margin:18px 0}canvas{width:100%;height:260px}
-.error{color:#ffb5a7}.note{font-size:12px;line-height:1.6}
+.error{color:#b91c1c}.note{font-size:12px;line-height:1.6}
 footer{margin-top:24px}table{width:100%;border-collapse:collapse;font-size:13px}
-td,th{padding:9px;border-bottom:1px solid #344255;text-align:left}
-</style></head><body>
+td,th{padding:9px;border-bottom:1px solid #e1e8ef;text-align:left}
+ .tabs{display:flex;gap:8px;margin:20px 0}.tabs button{background:#e9eff7;color:#233b55;border:1px solid #cbd8e8}.tabs button.active{background:#2369bd;color:white}.hidden{display:none!important}select{padding:10px;background:white;color:#17263a;border:1px solid #c8d5e2;border-radius:8px;min-width:260px} </style></head><body>
 <header><div><h1>Fitness &amp; Health</h1><p class="subtitle">Private local analysis · Observed, estimated and scenario data kept separate</p></div><div class="note">127.0.0.1 only · No third-party assets</div></header>
-<div class="controls">
+<nav class="tabs"><button class="active" data-tab="health">Health &amp; nutrition</button><button data-tab="training">Strength training</button></nav><main id="healthTab"><div class="controls">
 <label>From<input id="start" type="date"></label><label>To<input id="end" type="date"></label>
 <label>Assumed TDEE (kcal)<input id="tdee" type="number" min="1000" max="6000" value="2600"></label>
 <label>Daily baseline intake (kcal)<input id="intake" type="number" min="600" max="6000" value="1800"></label>
@@ -126,7 +128,7 @@ td,th{padding:9px;border-bottom:1px solid #344255;text-align:left}
 </section>
 <section class="card"><h2>Monthly coverage &amp; summaries</h2><div style="overflow:auto"><table id="monthly"></table></div></section>
 <section class="card"><h2>Methodology &amp; provenance</h2><div id="sources" class="note"></div></section>
-<footer class="note">Missing diary days are unknown, not zero. A low logged calorie day may be incomplete. Consecutive equal weights may be chart carry-forwards. TDEE and forecasts are estimates, not clinical measurements.</footer>
+</main><main id="trainingTab" class="hidden"><div class="controls"><label>Exercise<select id="exerciseSelect"><option value="">Loading...</option></select></label></div><p id="trainingError" class="error"></p><section class="grid" id="trainingMetrics"></section><section class="grid"><div class="card"><h2>Best working-set load (kg)</h2><canvas id="strengthChart"></canvas></div><div class="card"><h2>Estimated one-rep max (kg)</h2><canvas id="oneRepChart"></canvas></div><div class="card"><h2>Session volume (kg × reps)</h2><canvas id="volumeChart"></canvas></div><div class="card"><h2>Working sets per session</h2><canvas id="setsChart"></canvas></div></section><section class="card"><h2>Recent sessions</h2><div style="overflow:auto"><table id="trainingTable"></table></div></section><section class="card"><h2>Training data notes</h2><p class="note" id="trainingNotes"></p></section></main><footer class="note">Missing diary days are unknown, not zero. A low logged calorie day may be incomplete. Consecutive equal weights may be chart carry-forwards. TDEE and forecasts are estimates, not clinical measurements.</footer>
 <script>
 const $=id=>document.getElementById(id), number=x=>x==null?'—':Number(x).toLocaleString(undefined,{maximumFractionDigits:1});
 function chart(id,rows,lines){
@@ -134,25 +136,25 @@ function chart(id,rows,lines){
  el.width=w*dpi;el.height=h*dpi;const ctx=el.getContext('2d');ctx.scale(dpi,dpi);
  ctx.clearRect(0,0,w,h); const pad={l:54,r:18,t:14,b:29}, plotW=w-pad.l-pad.r,plotH=h-pad.t-pad.b;
  const values=lines.flatMap(l=>rows.map(r=>r[l.key]).filter(v=>v!=null&&Number.isFinite(v)));
- if(!values.length){ctx.fillStyle='#9caec3';ctx.fillText('No data available',20,35);return}
+ if(!values.length){ctx.fillStyle='#65778a';ctx.fillText('No data available',20,35);return}
  let lo=Math.min(...values),hi=Math.max(...values);if(hi===lo){lo-=1;hi+=1}
  const gap=(hi-lo)*.1;lo-=gap;hi+=gap;
- ctx.font='12px system-ui';ctx.strokeStyle='#34465d';ctx.fillStyle='#9eb1c9';
+ ctx.font='12px system-ui';ctx.strokeStyle='#e1e8ef';ctx.fillStyle='#56687b';
  for(let i=0;i<=4;i++){let y=pad.t+plotH*i/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(w-pad.r,y);ctx.stroke();ctx.fillText(Math.round(hi-(hi-lo)*i/4).toLocaleString(),4,y+4)}
  const xx=i=>pad.l+i*plotW/Math.max(1,rows.length-1), yy=v=>pad.t+(hi-v)*plotH/(hi-lo);
  for(const line of lines){ctx.strokeStyle=line.color;ctx.lineWidth=2;ctx.beginPath();let open=false;
  rows.forEach((r,i)=>{let v=r[line.key];if(v==null){open=false;return}if(!open){ctx.moveTo(xx(i),yy(v));open=true}else ctx.lineTo(xx(i),yy(v))});ctx.stroke()}
- ctx.fillStyle='#9eb1c9';if(rows.length){ctx.fillText(rows[0].date,pad.l,h-7);ctx.textAlign='right';ctx.fillText(rows[rows.length-1].date,w-pad.r,h-7);ctx.textAlign='left'}
+ ctx.fillStyle='#56687b';if(rows.length){ctx.fillText(rows[0].date,pad.l,h-7);ctx.textAlign='right';ctx.fillText(rows[rows.length-1].date,w-pad.r,h-7);ctx.textAlign='left'}
 }
 function fill(data){
  const rows=data.observations, q=data.quality, last=rows.filter(r=>r.weight_kg!=null).at(-1);
  const items=[['Latest recorded weight',last?number(last.weight_kg)+' kg':'—'],['Days with recorded food',q.logged_days+' / '+q.total_days],['Possibly partial food logs',q.possibly_partial_days],['Withings TDEE days',q.withings_tdee_days]];
  $('metrics').replaceChildren(...items.map(([title,value])=>{const c=document.createElement('div');c.className='card';const h=document.createElement('div');h.className='note';h.textContent=title;const v=document.createElement('div');v.className='stat';v.textContent=value;c.append(h,v);return c}));
- chart('weight',rows,[{key:'weight_kg',color:'#49a0ff'},{key:'weight_7d_mean',color:'#ffc06a'}]);
- chart('calories',rows,[{key:'calories',color:'#51c6a4'}]);
- chart('tdeeChart',rows,[{key:'tdee_calories',color:'#ffb56b'}]);
+ chart('weight',rows,[{key:'weight_kg',color:'#2469b9'},{key:'weight_7d_mean',color:'#b66a19'}]);
+ chart('calories',rows,[{key:'calories',color:'#16856c'}]);
+ chart('tdeeChart',rows,[{key:'tdee_calories',color:'#b66a19'}]);
  const predicted=data.scenarios.map(s=>s.trajectory), dates=predicted[0].map(r=>r.date);
- chart('forecast',dates.map((date,i)=>({date,low:predicted[0][i]?.weight_kg,mid:predicted[1][i]?.weight_kg,high:predicted[2][i]?.weight_kg})),[{key:'low',color:'#628cad'},{key:'mid',color:'#54caa6'},{key:'high',color:'#ffc06a'}]);
+ chart('forecast',dates.map((date,i)=>({date,low:predicted[0][i]?.weight_kg,mid:predicted[1][i]?.weight_kg,high:predicted[2][i]?.weight_kg})),[{key:'low',color:'#3467a0'},{key:'mid',color:'#16856c'},{key:'high',color:'#b66a19'}]);
  const cols=['month','days','days_logged','plausible_full_days','mean_logged_kcal','mean_withings_tdee','last_weight_kg'];
  const tbl=$('monthly');tbl.replaceChildren();const tr=document.createElement('tr');cols.forEach(k=>{let th=document.createElement('th');th.textContent=k.replaceAll('_',' ');tr.append(th)});tbl.append(tr);
  data.summary.forEach(r=>{let tr=document.createElement('tr');cols.forEach(k=>{let td=document.createElement('td');td.textContent=typeof r[k]==='number'?number(r[k]):r[k]??'—';tr.append(td)});tbl.append(tr)});
@@ -164,6 +166,38 @@ async function refresh(){
  const res=await fetch('/api/dashboard?'+params);const data=await res.json();if(!res.ok)throw Error(data.error);fill(data)
  }catch(e){$('error').textContent=e.message}
 }
+let trainingData=null;
+function showTraining(){
+ const exercises=trainingData.exercises, id=$('exerciseSelect').value;
+ const e=exercises.find(x=>x.id===id)||exercises[0];
+ if(!e)return;
+ const sm=trainingData.summary, items=[['Workouts',sm.workouts],['Completed working sets',sm.sets],['Recorded exercises',sm.exercises],['Exercise PR (kg)',number(e.best_weight_kg)],['Estimated 1RM (kg)',number(e.best_estimated_1rm_kg)],['Exercise sessions',e.sessions]];
+ $('trainingMetrics').replaceChildren(...items.map(([k,v])=>{const c=document.createElement('div');c.className='card';const h=document.createElement('div');h.className='note';h.textContent=k;const t=document.createElement('div');t.className='stat';t.textContent=v;c.append(h,t);return c}));
+ const series=e.history;chart('strengthChart',series,[{key:'max_weight_kg',color:'#2369bd'}]);
+ chart('oneRepChart',series,[{key:'estimated_1rm_kg',color:'#16856c'}]);
+ chart('volumeChart',series,[{key:'volume_kg',color:'#b66a19'}]);
+ chart('setsChart',series,[{key:'sets',color:'#7c4da3'}]);
+ const tbl=$('trainingTable');tbl.replaceChildren();
+ const cols=['date','sets','reps','max_weight_kg','estimated_1rm_kg','volume_kg'];
+ const tr=document.createElement('tr');cols.forEach(k=>{const th=document.createElement('th');th.textContent=k.replaceAll('_',' ');tr.append(th)});tbl.append(tr);
+ series.slice(-30).reverse().forEach(r=>{const tr=document.createElement('tr');cols.forEach(k=>{const td=document.createElement('td');td.textContent=typeof r[k]==='number'?number(r[k]):r[k];tr.append(td)});tbl.append(tr)});
+ $('trainingNotes').textContent=trainingData.file+' — '+trainingData.methodology;
+}
+async function loadTraining(){
+ try{const res=await fetch('/api/training');const data=await res.json();if(!res.ok)throw Error(data.error);
+ if(!data.available){$('trainingError').textContent=data.message;return}
+ trainingData=data;const select=$('exerciseSelect');select.replaceChildren();
+ data.exercises.forEach(e=>{const o=document.createElement('option');o.value=e.id;o.textContent=e.name+' ('+e.sessions+' sessions)';select.append(o)});
+ showTraining();
+ }catch(e){$('trainingError').textContent=e.message}
+}
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+ const training=b.dataset.tab==='training';
+ $('trainingTab').classList.toggle('hidden',!training);$('healthTab').classList.toggle('hidden',training);
+ document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
+ if(training){if(!trainingData)loadTraining();else showTraining()}
+}));
+$('exerciseSelect').addEventListener('change',showTraining);
 $('refresh').addEventListener('click',refresh);window.addEventListener('resize',()=>{clearTimeout(window.redraw);window.redraw=setTimeout(refresh,180)});refresh();
 </script></body></html>"""
 
@@ -176,6 +210,14 @@ def make_handler(root):
                 body = HTML.encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "text/html; charset=utf-8")
+            elif url.path == "/api/training":
+                try:
+                    body = json.dumps(load_training(root), allow_nan=False).encode("utf-8")
+                    self.send_response(200)
+                except (ValueError, FileNotFoundError, KeyError, zipfile.BadZipFile) as exc:
+                    body = json.dumps({"error": str(exc)}).encode("utf-8")
+                    self.send_response(400)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
             elif url.path == "/api/dashboard":
                 try:
                     qs = parse_qs(url.query)
